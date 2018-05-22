@@ -57,7 +57,9 @@ def print_request_name(req_name):
 
 
 def print_request_parameters(req_param_list):
-    if 'parameters' in req_param_list:
+    if 'parameters' not in req_param_list:
+        print('()')
+    else:
         query = '('
         for params in req_param_list['parameters']:
             in_arg = params['in']
@@ -88,8 +90,6 @@ def print_request_parameters(req_param_list):
         query = query[:-2]
         query += ')'
         print(query)
-    else:
-        print('()')
 
 
 def print_results(parsed_dict):
