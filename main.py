@@ -11,34 +11,40 @@ swagger = json.loads(content.content.decode('utf-8'))
 def read_parameters(field):
     temp = []
     for f in field:
-        temp.append([
-            f.get('in'),
-            f.get('name'),
-            f.get('type'),
-            f.get('required')
-        ])
+        temp.append({
+            'in': f.get('in'),
+            'name': f.get('name'),
+            'type': f.get('type'),
+            'required': f.get('required')
+        })
     return temp
 
 
-def read_controllers():
-    result = {}
-    paths = swagger['paths']
-    for key, value in paths.items():
-        for k, v in value.items():
-            name = v['tags'][0]
-            temp = {
-                'type': k,
-                'path': key,
-                'name': v['operationId']
-            }
-            if 'parameters' in v:
-                parameters = read_parameters(v['parameters'])
-                temp['parameters'] = parameters
+def parse_req_data(req_type, path, req_data):
+    parsed = {
+        'type': req_type,
+        'path': path,
+        'name': req_data['operationId']
+    }
+    if 'parameters' in req_data:
+        parameters = read_parameters(req_data['parameters'])
+        parsed['parameters'] = parameters
+    return parsed
 
-            if name not in result:
-                result[name] = []
-            result[name].append(temp)
-    return result
+
+def read_controllers():
+    controllers = {}
+    path_dict = swagger['paths']
+    for path, path_data in path_dict.items():
+        for req_type, req_data in path_data.items():
+            controller_name = req_data['tags'][0]
+            temp = parse_req_data(req_type, path, req_data)
+
+            if controller_name not in controllers:
+                controllers[controller_name] = []
+            controllers[controller_name].append(temp)
+
+    return controllers
 
 
 def print_annotation_path(req_type, req_path):
@@ -54,25 +60,27 @@ def print_request_parameters(req_param_list):
     if 'parameters' in req_param_list:
         query = '('
         for params in req_param_list['parameters']:
-            if params[0] == 'body':
+            in_arg = params['in']
+            if in_arg == 'body':
                 continue
 
             query += '@'
-            query += params[0].title()
+            query += in_arg.title()
 
-            name = params[1]
+            name = params['name']
             name = name[0].lower() + name[1:]
-            query += '("' + params[1] + '") ' + name + ': '
+            query += '("' + params['name'] + '") ' + name + ': '
 
-            need_capitalize = params[2] == 'string' or params[2] == 'boolean'
+            lang_type = params['type']
+            need_capitalize = lang_type == 'string' or lang_type == 'boolean'
             if need_capitalize:
-                query += params[2].title()
-            elif params[2] == 'integer':
+                query += lang_type.title()
+            elif lang_type == 'integer':
                 query += 'Long'
             else:
-                query += params[2]
+                query += lang_type
 
-            if not params[3]:
+            if not params['required']:
                 query += '? = null'
 
             query += ',\n'
