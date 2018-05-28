@@ -2,9 +2,12 @@ import json
 
 import requests
 
+from Formatter import SingleFormatter
+
 # content = requests.get("http://172.30.1.75:8082/streaming-api/v2/api-docs")
-content = requests.get("http://music.dev.nurtelecom.intech-global.com/streaming-api/v2/api-docs")
-# content = requests.get("http://music.dev.nurtelecom.intech-global.com/v2/api-docs")
+# content = requests.get("http://music.dev.nurtelecom.intech-global.com/streaming-api/v2/api-docs")
+content = requests.get("http://music.dev.nurtelecom.intech-global.com/v2/api-docs")
+
 swagger = json.loads(content.content.decode('utf-8'))
 
 
@@ -106,34 +109,7 @@ def schema_type(t):
     return t.title()
 
 
-def print_schema(req_param_responses):
-    if 'type' in req_param_responses:
-        if req_param_responses['type'] == 'array':
-            items_ = req_param_responses['items']
-            if 'type' in items_:
-                result = ':Single<List<' + items_['type'].title() + '>>'
-            elif '$ref' in items_:
-                full_definition = items_['$ref']
-                last_splash = full_definition.rfind('/')
-                result = ':Single<List<' + full_definition[last_splash + 1:] + '>>'
-            else:
-                raise Exception('A very specific bad thing happened')
-            print(result)
-        else:
-            result = ':Single<' + req_param_responses['type'].title() + '>'
-            print(result)
-    else:
-        full_definition = req_param_responses['$ref']
-        last_splash = full_definition.rfind('/')
-        result = ':Single<' + full_definition[last_splash + 1:] + '>'
-        print(result)
-
-
-def print_request_return_value(req_param_responses):
-    if 'schema' not in req_param_responses:
-        print(':Completable')
-    else:
-        print_schema(req_param_responses['schema'])
+formatter = SingleFormatter()
 
 
 def print_results(parsed_dict):
@@ -144,7 +120,7 @@ def print_results(parsed_dict):
             print_annotation_path(temp['type'], temp['path'])
             print_request_name(temp['name'])
             print_request_parameters(temp)
-            print_request_return_value(temp['response'])
+            formatter.print(temp['response'])
             print()
         print()
 
