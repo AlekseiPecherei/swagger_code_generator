@@ -24,12 +24,18 @@ def parse_req_data(req_type, path, req_data):
     parsed = {
         'type': req_type,
         'path': path,
-        'name': req_data['operationId']
+        'name': req_data['operationId'],
+        'response': req_data['responses']['200']
     }
     if 'parameters' in req_data:
         parameters = read_parameters(req_data['parameters'])
         parsed['parameters'] = parameters
     return parsed
+
+
+def read_definitions():
+    def_dict = swagger['definitions']
+    return list(def_dict)
 
 
 def read_controllers():
@@ -70,8 +76,8 @@ def print_request_parameters(req_param_list):
             query += in_arg.title()
 
             name = params['name']
-            name = name[0].lower() + name[1:]
-            query += '("' + params['name'] + '") ' + name + ': '
+            dsc = to_lower_case(name)
+            query += '("' + name + '") ' + dsc + ': '
 
             lang_type = params['type']
             need_capitalize = lang_type == 'string' or lang_type == 'boolean'
@@ -92,6 +98,44 @@ def print_request_parameters(req_param_list):
         print(query)
 
 
+def to_lower_case(name):
+    return name[0].lower() + name[1:]
+
+
+def schema_type(t):
+    return t.title()
+
+
+def print_schema(req_param_responses):
+    if 'type' in req_param_responses:
+        if req_param_responses['type'] == 'array':
+            items_ = req_param_responses['items']
+            if 'type' in items_:
+                result = ':Single<List<' + items_['type'].title() + '>>'
+            elif '$ref' in items_:
+                full_definition = items_['$ref']
+                last_splash = full_definition.rfind('/')
+                result = ':Single<List<' + full_definition[last_splash + 1:] + '>>'
+            else:
+                raise Exception('A very specific bad thing happened')
+            print(result)
+        else:
+            result = ':Single<' + req_param_responses['type'].title() + '>'
+            print(result)
+    else:
+        full_definition = req_param_responses['$ref']
+        last_splash = full_definition.rfind('/')
+        result = ':Single<' + full_definition[last_splash + 1:] + '>'
+        print(result)
+
+
+def print_request_return_value(req_param_responses):
+    if 'schema' not in req_param_responses:
+        print(':Completable')
+    else:
+        print_schema(req_param_responses['schema'])
+
+
 def print_results(parsed_dict):
     for key, value in parsed_dict.items():
         print(key)
@@ -100,9 +144,13 @@ def print_results(parsed_dict):
             print_annotation_path(temp['type'], temp['path'])
             print_request_name(temp['name'])
             print_request_parameters(temp)
+            print_request_return_value(temp['response'])
             print()
         print()
 
 
+dto = read_definitions()
 bar = read_controllers()
+print(dto)
+print()
 print_results(bar)
